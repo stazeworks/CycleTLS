@@ -337,6 +337,17 @@ const initCycleTLS = async (
               method,
             });
 
+            let allowContinue = true
+            const timeoutForRequest = setTimeout(() => {
+              console.log('REQUEST TIMED OUT LOL')
+              allowContinue = false
+              return resolveRequest({
+                status: -503,
+                body: 'Force timeout',
+                headers: {},
+              })
+            }, 15000);
+
             instance.once(requestId, (response) => {
               if (response.error) return rejectRequest(response.error);
               try {
@@ -345,6 +356,9 @@ const initCycleTLS = async (
                 //override console.log full repl to display full body
                 response.Body[util.inspect.custom] = function(){ return JSON.stringify( this, undefined, 2); }
               } catch (e) {}
+
+              if(!allowContinue) return
+              clearTimeout(timeoutForRequest)
 
               const { Status: status, Body: body, Headers: headers } = response;
               
