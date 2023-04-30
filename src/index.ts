@@ -56,7 +56,7 @@ const cleanExit = async (message?: string | Error, exit?: boolean) => {
 
   if (process.platform == "win32") {
     if(child) {
-      new Promise((resolve, reject) => {
+      new Promise(resolve => {
         exec(
             "taskkill /pid " + child.pid + " /T /F",
             (error: any, stdout: any, stderr: any) => {
@@ -64,6 +64,7 @@ const cleanExit = async (message?: string | Error, exit?: boolean) => {
                 console.warn(error);
               }
               if (exit) process.exit();
+              resolve(null);
             }
         );
       });
@@ -71,9 +72,10 @@ const cleanExit = async (message?: string | Error, exit?: boolean) => {
   } else {
     if(child) {
       //linux/darwin os
-      new Promise((resolve, reject) => {
+      new Promise(resolve => {
         process.kill(-child.pid);
         if (exit) process.exit();
+        resolve(null);
       });
     }
   }
@@ -234,7 +236,7 @@ class Golang extends EventEmitter {
         }
       });
     } else {
-      return new Promise((resolve, reject) => {
+      return new Promise(resolve => {
         this.server.close();
         if (this.host) {
           process.kill(-child.pid);
