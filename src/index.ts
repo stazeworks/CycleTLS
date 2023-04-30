@@ -86,6 +86,10 @@ const cleanExit = async (message?: string | Error, exit?: boolean) => {
 process.on("SIGINT", () => cleanExit());
 process.on("SIGTERM", () => cleanExit());
 
+const onStdoutData = (data: any) => {
+  console.log(data.toString());
+}
+
 const handleSpawn = (debug: boolean, fileName: string, port: number) => {
   child = spawn(path.join(`"${__dirname}"`, fileName), {
     env: { WS_PORT: port.toString() },
@@ -93,6 +97,8 @@ const handleSpawn = (debug: boolean, fileName: string, port: number) => {
     windowsHide: true,
     detached: process.platform !== "win32"
   });
+
+  child.stdout.on('data', onStdoutData)
   child.stderr.on("data", (stderr) => {
     if (stderr.toString().includes("Request_Id_On_The_Left")) {
       const splitRequestIdAndError = stderr.toString().split("Request_Id_On_The_Left");
