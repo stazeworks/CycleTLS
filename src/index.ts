@@ -340,13 +340,12 @@ const initCycleTLS = async (
               if (response.headers?.['Content-Type'].includes('application/json')) {
                 try {
                   response.Body = JSON.parse(response.Body);
+                  //override console.log full repl to display full body
+                  response.Body[util.inspect.custom] = function(){ return JSON.stringify( this, undefined, 2); }
                 } catch (e) {
                   console.error('JSON parse error', e);
                 }
               }
-
-              //override console.log full repl to display full body
-              response.Body[util.inspect.custom] = function(){ return JSON.stringify( this, undefined, 2); }
 
               const { Status: status, Body: body, Headers: headers } = response;
 
