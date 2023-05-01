@@ -169,6 +169,8 @@ func processRequest(request cycleTLSRequest) (result fullRequest) {
 
 func dispatcher(res fullRequest) (response Response, err error) {
 	resp, err := res.client.Do(res.req)
+	log.Print(resp.Body)
+
 	if err != nil {
 
 		parsedError := parseError(err)
@@ -185,7 +187,6 @@ func dispatcher(res fullRequest) (response Response, err error) {
 	content := resp.Header["Content-Type"]
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	log.Print(resp)
 
 	if err != nil {
 		log.Print(resp)
