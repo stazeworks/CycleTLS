@@ -164,8 +164,7 @@ class Golang extends EventEmitter {
   }
 
   createWebSocketClient(port: number, debug: boolean) {
-    console.log(`Spawn WebSocket server on port ${port}`);
-
+    console.log(`Create  WebSocket server on port ${port}`);
     const server = new WebSocket(`ws://localhost:${port}`);
 
     server.on("open", () => {
@@ -174,7 +173,6 @@ class Golang extends EventEmitter {
 
       this.server.on("message", (data: string) => {
         const message = JSON.parse(data);
-        console.log('WebSocket.onMessage:', message);
         this.emit(message.RequestID, message);
       });
 
