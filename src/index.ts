@@ -175,7 +175,6 @@ class Golang extends EventEmitter {
       this.server = server;
 
       this.server.on("message", (data: string) => {
-        console.log('WebSocket.onMessage: raw data', data)
         const message = JSON.parse(data);
         this.emit(message.RequestID, message);
       });
@@ -348,6 +347,8 @@ const initCycleTLS = async (
               if (response.error) return rejectRequest(response.error);
               try {
                 //parse json responses
+                console.log('Instance.once: response', response);
+
                 response.Body = JSON.parse(response.Body);
                 //override console.log full repl to display full body
                 response.Body[util.inspect.custom] = function(){ return JSON.stringify( this, undefined, 2); }
