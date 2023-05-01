@@ -332,42 +332,29 @@ const initCycleTLS = async (
               method,
             });
 
-            let allowContinue = true
-            const timeoutForRequest = setTimeout(() => {
-              console.log('REQUEST TIMED OUT LOL')
-              allowContinue = false
-              return resolveRequest({
-                status: -503,
-                body: 'Force timeout',
-                headers: {},
-              })
-            }, 15000);
-
             instance.once(requestId, (response) => {
-              if (response.error) return rejectRequest(response.error);
-              try {
-                //parse json responses
-                console.log('Instance.once: response', response);
-
-                response.Body = JSON.parse(response.Body);
-                //override console.log full repl to display full body
-                response.Body[util.inspect.custom] = function(){ return JSON.stringify( this, undefined, 2); }
-              } catch (e) {
-                console.log(`Response parse error`, e)
+              if (response.error) {
+                return rejectRequest(response.error);
               }
 
-              if(!allowContinue) return
-              clearTimeout(timeoutForRequest)
+              if (response.headers['Content-Type']?.includes('application/json')) {
+                try {
+                  response.Body = JSON.parse(response.Body);
+                } catch (e) {
+                  console.error('JSON parse error', e);
+                }
+              }
+
+              //override console.log full repl to display full body
+              response.Body[util.inspect.custom] = function(){ return JSON.stringify( this, undefined, 2); }
 
               const { Status: status, Body: body, Headers: headers } = response;
 
-              if (headers["Set-Cookie"])
+              if (headers["Set-Cookie"]) {
                 headers["Set-Cookie"] = headers["Set-Cookie"].split("/,/");
-              resolveRequest({
-                status,
-                body,
-                headers,
-              });
+              }
+
+              resolveRequest({ status, body, headers });
             });
           });
         };
