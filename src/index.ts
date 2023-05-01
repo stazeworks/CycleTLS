@@ -91,7 +91,7 @@ const handleSpawn = (debug: boolean, fileName: string, port: number) => {
     detached: process.platform !== "win32"
   });
 
-  child.stdout.on('data', onStdoutData);
+  // child.stdout.on('data', onStdoutData);
 
   child.stderr.on("data", (stderr) => {
     if (stderr.toString().includes("Request_Id_On_The_Left")) {
