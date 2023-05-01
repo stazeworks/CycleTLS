@@ -337,7 +337,7 @@ const initCycleTLS = async (
                 return rejectRequest(response.error);
               }
 
-              if (response.headers['Content-Type']?.includes('application/json')) {
+              if (response.headers?.['Content-Type'].includes('application/json')) {
                 try {
                   response.Body = JSON.parse(response.Body);
                 } catch (e) {
