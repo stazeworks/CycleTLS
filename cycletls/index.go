@@ -169,8 +169,6 @@ func processRequest(request cycleTLSRequest) (result fullRequest) {
 
 func dispatcher(res fullRequest) (response Response, err error) {
 	resp, err := res.client.Do(res.req)
-	log.Print(resp.Body)
-
 	if err != nil {
 
 		parsedError := parseError(err)
@@ -185,6 +183,9 @@ func dispatcher(res fullRequest) (response Response, err error) {
 
 	encoding := resp.Header["Content-Encoding"]
 	content := resp.Header["Content-Type"]
+
+	log.Print(encoding)
+	log.Print(content)
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 
