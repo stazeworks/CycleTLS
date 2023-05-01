@@ -4,7 +4,7 @@ import { EventEmitter } from "events";
 import WebSocket from "ws";
 import * as http from "http";
 import os from 'os';
-import util from "util";
+import util, { log } from "util";
 
 export interface Cookie {
   name: string;
@@ -20,14 +20,8 @@ export interface Cookie {
   unparsed?: string;
 }
 export interface CycleTLSRequestOptions {
-  headers?: {
-    [key: string]: any;
-  };
-  cookies?:
-     Array<object>
-    | {
-        [key: string]: string;
-      };
+  headers?: { [key: string]: any };
+  cookies?: Array<object> | { [key: string]: string };
   body?: string;
   ja3?: string;
   userAgent?: string;
@@ -39,19 +33,15 @@ export interface CycleTLSRequestOptions {
 
 export interface CycleTLSResponse {
   status: number;
-  body: string | {
-    [key: string]: any;
-  };
-  headers: {
-    [key: string]: any;
-  };
+  body: string | { [key: string]: any };
+  headers: { [key: string]: any };
 }
 
 let child: ChildProcessWithoutNullStreams;
 let lastRequestID: string
 
 const cleanExit = async (message?: string | Error, exit?: boolean) => {
-  if (message) console.log(message);
+  if (message) console.log(`[cycle-tls@golang] Clean exit`, message);
   exit = exit ?? true
 
   if (child) {
@@ -83,6 +73,7 @@ const cleanExit = async (message?: string | Error, exit?: boolean) => {
   }
 
 };
+
 process.on("SIGINT", () => cleanExit());
 process.on("SIGTERM", () => cleanExit());
 
@@ -91,6 +82,8 @@ const onStdoutData = (data: any) => {
 }
 
 const handleSpawn = (debug: boolean, fileName: string, port: number) => {
+  console.log(`Spawn golang service on port ${port}`);
+
   child = spawn(path.join(`"${__dirname}"`, fileName), {
     env: { WS_PORT: port.toString() },
     shell: true,
@@ -98,31 +91,37 @@ const handleSpawn = (debug: boolean, fileName: string, port: number) => {
     detached: process.platform !== "win32"
   });
 
-  child.stdout.on('data', onStdoutData)
+  child.stdout.on('data', onStdoutData);
+
   child.stderr.on("data", (stderr) => {
     if (stderr.toString().includes("Request_Id_On_The_Left")) {
       const splitRequestIdAndError = stderr.toString().split("Request_Id_On_The_Left");
       const [requestId, error] = splitRequestIdAndError;
+
+      console.log(`[GO] ERROR: ${requestId}`, error);
       //TODO Correctly parse logging messages
       // this.emit(requestId, { error: new Error(error) });
     } else {
       debug
         ? cleanExit(new Error(stderr))
         //TODO add Correct error logging url request/ response/
-        : cleanExit(`Error Processing Request (please open an issue https://github.com/Danny-Dasilva/CycleTLS/issues/new/choose) -> ${stderr}`, false).then(() => handleSpawn(debug, fileName, port));
+        : cleanExit(`Error Processing Request -> ${stderr}`, false)
+              .then(() => handleSpawn(debug, fileName, port));
     }
   });
 }
 
 
 class Golang extends EventEmitter {
+
   server: WebSocket;
   queue: Array<string>;
   host: boolean;
   queueId: NodeJS.Timeout;
+
   constructor(port: number, debug: boolean) {
     super();
-    let server = http.createServer();
+    const server = http.createServer();
 
     server.listen(port)
         .on('listening', () => {
@@ -132,22 +131,19 @@ class Golang extends EventEmitter {
           })
         })
         .on('error', () => {
-          this.createClient(port, debug);
+          this.createWebSocketClient(port, debug);
           this.host = false;
         });
   }
 
-  spawnServer(
-      port: number,
-      debug: boolean
-  ){
+  spawnServer(port: number, debug: boolean) {
     let executableFilename;
 
     if (process.platform == "win32") {
       executableFilename = "index.exe";
     } else if (process.platform == "linux") {
 
-      //build arm 
+      //build arm
       if (os.arch() == "arm") {
         executableFilename = "index-arm";
       } else if (os.arch() == "arm64") {
@@ -156,7 +152,7 @@ class Golang extends EventEmitter {
         //default
         executableFilename = "index";
       }
-  
+
     } else if (process.platform == "darwin") {
       executableFilename = "index-mac";
     } else {
@@ -164,13 +160,12 @@ class Golang extends EventEmitter {
     }
     handleSpawn(debug, executableFilename, port);
 
-    this.createClient(port, debug);
+    this.createWebSocketClient(port, debug);
   }
 
-  createClient(
-      port: number,
-      debug: boolean
-  ){
+  createWebSocketClient(port: number, debug: boolean) {
+    console.log(`Spawn WebSocket server on port ${port}`);
+
     const server = new WebSocket(`ws://localhost:${port}`);
 
     server.on("open", () => {
@@ -179,6 +174,7 @@ class Golang extends EventEmitter {
 
       this.server.on("message", (data: string) => {
         const message = JSON.parse(data);
+        console.log('WebSocket.onMessage:', message);
         this.emit(message.RequestID, message);
       });
 
@@ -187,20 +183,17 @@ class Golang extends EventEmitter {
 
     server.on("error", (err) => {
       // Connection error - retry in .1s
-      server.removeAllListeners();
+      console.error('WebSocket.onError:', err);
+      server.close();
+    });
 
-      setTimeout(() => {
-        this.createClient(port, debug)
-      }, 100)
+    server.on('close', () => {
+        server.removeAllListeners();
+        setTimeout(() => this.createWebSocketClient(port, debug), 100);
     })
   }
 
-  request(
-    requestId: string,
-    options: {
-      [key: string]: any;
-    }
-  ) {
+  request(requestId: string, options: { [key: string]: any }) {
     lastRequestID = requestId
 
     if (this.server) {
@@ -307,7 +300,7 @@ const initCycleTLS = async (
             const requestId = `${url}${Math.floor(Date.now() * Math.random())}`;
             //set default options
             options = options ?? {}
-            
+
             //set default ja3, user agent, body and proxy
             if (!options?.ja3)
               options.ja3 = "771,4865-4867-4866-49195-49199-52393-52392-49196-49200-49162-49161-49171-49172-51-57-47-53-10,0-23-65281-10-11-35-16-5-51-43-13-45-28-21,29-23-24-25-256-257,0";
@@ -315,7 +308,7 @@ const initCycleTLS = async (
               options.userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.54 Safari/537.36";
             if (!options?.body) options.body = "";
             if (!options?.proxy) options.proxy = "";
-            
+
             //convert simple cookies
             const cookies = options?.cookies;
             if (
@@ -361,7 +354,7 @@ const initCycleTLS = async (
               clearTimeout(timeoutForRequest)
 
               const { Status: status, Body: body, Headers: headers } = response;
-              
+
               if (headers["Set-Cookie"])
                 headers["Set-Cookie"] = headers["Set-Cookie"].split("/,/");
               resolveRequest({
