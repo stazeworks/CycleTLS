@@ -35,14 +35,14 @@ type cycleTLSRequest struct {
 	Options   Options `json:"options"`
 }
 
-// rename to request+client+options
+//rename to request+client+options
 type fullRequest struct {
 	req     *http.Request
 	client  http.Client
 	options cycleTLSRequest
 }
 
-// Response contains Cycletls response data
+//Response contains Cycletls response data
 type Response struct {
 	RequestID string
 	Status    int
@@ -50,7 +50,7 @@ type Response struct {
 	Headers   map[string]string
 }
 
-// JSONBody converts response body to json
+//JSONBody converts response body to json
 func (re Response) JSONBody() map[string]interface{} {
 	var data map[string]interface{}
 	err := json.Unmarshal([]byte(re.Body), &data)
@@ -60,7 +60,7 @@ func (re Response) JSONBody() map[string]interface{} {
 	return data
 }
 
-// CycleTLS creates full request and response
+//CycleTLS creates full request and response
 type CycleTLS struct {
 	ReqChan  chan fullRequest
 	RespChan chan Response
@@ -173,8 +173,6 @@ func dispatcher(res fullRequest) (response Response, err error) {
 
 		parsedError := parseError(err)
 
-		log.Print("Parse Bytes" + err.Error())
-
 		headers := make(map[string]string)
 		return Response{res.options.RequestID, parsedError.StatusCode, parsedError.ErrorMsg + "-> \n" + string(err.Error()), headers}, nil //normally return error here
 
@@ -186,7 +184,6 @@ func dispatcher(res fullRequest) (response Response, err error) {
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Print(resp)
 		log.Print("Parse Bytes" + err.Error())
 		return response, err
 	}
