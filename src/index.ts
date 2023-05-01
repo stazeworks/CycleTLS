@@ -175,6 +175,7 @@ class Golang extends EventEmitter {
       this.server = server;
 
       this.server.on("message", (data: string) => {
+        console.log('WebSocket.onMessage: raw data', data)
         const message = JSON.parse(data);
         this.emit(message.RequestID, message);
       });
