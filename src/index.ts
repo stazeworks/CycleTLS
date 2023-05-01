@@ -64,6 +64,7 @@ const cleanExit = async (message?: string | Error, exit?: boolean) => {
     } else {
       //linux/darwin os
       new Promise(resolve => {
+        console.log('Killing process...', child.pid)
         process.kill(child.pid);
         if (exit) process.exit();
         resolve(null);
@@ -98,10 +99,11 @@ const handleSpawn = (debug: boolean, fileName: string, port: number) => {
       const splitRequestIdAndError = stderr.toString().split("Request_Id_On_The_Left");
       const [requestId, error] = splitRequestIdAndError;
 
-      console.log(`[GO] ERROR: ${requestId}`, error);
+      console.log(`*** [GO] ERROR: ${requestId}`, error);
       //TODO Correctly parse logging messages
       // this.emit(requestId, { error: new Error(error) });
     } else {
+      console.error('<> [GO] ERROR', stderr.toString())
       debug
         ? cleanExit(new Error(stderr))
         //TODO add Correct error logging url request/ response/
@@ -165,6 +167,7 @@ class Golang extends EventEmitter {
 
   createWebSocketClient(port: number, debug: boolean) {
     console.log(`Create  WebSocket server on port ${port}`);
+
     const server = new WebSocket(`ws://localhost:${port}`);
 
     server.on("open", () => {
@@ -186,7 +189,8 @@ class Golang extends EventEmitter {
     });
 
     server.on('close', () => {
-        server.removeAllListeners();
+      console.error('WebSocket.onClose:');
+      server.removeAllListeners();
         setTimeout(() => this.createWebSocketClient(port, debug), 100);
     })
   }
@@ -346,7 +350,9 @@ const initCycleTLS = async (
                 response.Body = JSON.parse(response.Body);
                 //override console.log full repl to display full body
                 response.Body[util.inspect.custom] = function(){ return JSON.stringify( this, undefined, 2); }
-              } catch (e) {}
+              } catch (e) {
+                console.log(`Response parse error`, e)
+              }
 
               if(!allowContinue) return
               clearTimeout(timeoutForRequest)
