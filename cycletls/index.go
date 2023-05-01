@@ -185,6 +185,8 @@ func dispatcher(res fullRequest) (response Response, err error) {
 	content := resp.Header["Content-Type"]
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	log.Print(resp)
+
 	if err != nil {
 		log.Print(resp)
 		log.Print("Parse Bytes" + err.Error())
